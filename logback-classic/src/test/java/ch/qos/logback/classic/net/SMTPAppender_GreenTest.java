@@ -1,13 +1,13 @@
 /**
  * Logback: the reliable, generic, fast and flexible logging framework.
  * Copyright (C) 1999-2015, QOS.ch. All rights reserved.
- *
+ * <p>
  * This program and the accompanying materials are dual-licensed under
  * either the terms of the Eclipse Public License v1.0 as published by
  * the Eclipse Foundation
- *
- *   or (per the licensee's choosing)
- *
+ * <p>
+ * or (per the licensee's choosing)
+ * <p>
  * under the terms of the GNU Lesser General Public License version 2.1
  * as published by the Free Software Foundation.
  */
@@ -47,6 +47,10 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.*;
@@ -76,17 +80,29 @@ public class SMTPAppender_GreenTest {
         ServerSetup serverSetup = new ServerSetup(port, "localhost", ServerSetup.PROTOCOL_SMTP);
         greenMailServer = new GreenMail(serverSetup);
         greenMailServer.start();
-        // give the server a head start
-        if (EnvUtilForTests.isRunningOnSlowJenkins()) {
-            Thread.sleep(2000);
-        } else {
-            Thread.sleep(50);
-        }
+
+        waitForGreen(serverSetup);
     }
 
     @After
     public void tearDown() throws Exception {
         greenMailServer.stop();
+    }
+
+    void waitForGreen(ServerSetup serverSetup) throws InterruptedException {
+        while (true) {
+            try {
+                Socket socket = new Socket(InetAddress.getByName(serverSetup.getBindAddress()), serverSetup.getPort());
+                if (socket.isConnected()) {
+                    System.out.println("connected");
+                    break;
+                }
+            } catch (IOException e) {
+                //ignore exception
+                System.out.println("wait for green");
+            }
+            Thread.sleep(200L);
+        }
     }
 
     void buildSMTPAppender(String subject, boolean synchronicity) throws Exception {
